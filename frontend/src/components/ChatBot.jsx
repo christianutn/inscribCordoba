@@ -400,7 +400,7 @@ const ChatBoot = ({ chatMessages }) => {
         (async () => {
             const categorias = await getCategoriasChatbot();
             let misOpciones = [];
-            let primerPregunta = "Hola!....soy ChatBoot-Campus, en qué te puedo ayudar??\r\n Ingresá una opción:\r\n";
+            let primerPregunta = "Hola!....soy ChatBot-Campus, en qué te puedo ayudar??\r\n Ingresá una opción:\r\n";
             let secuenciaId = 1;
 
             categorias.forEach((element) => {
