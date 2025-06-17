@@ -415,7 +415,7 @@ const ChatBoot = ({ chatMessages }) => {
             });
 
             const textoOpcionAbierta = "Escribí tu pregunta si no encontrás una opción";
-            primerPregunta += `${secuenciaId})  ${textoOpcionAbierta}\r\n`;
+            primerPregunta += `${secuenciaId})  ${textoOpcionAbierta}\r\n`;
             primerPregunta = primerPregunta.replace(/\r\n/g, "<br>");
 
             // MODIFICADO: Añadimos la propiedad 'texto' para la opción de pregunta abierta.
