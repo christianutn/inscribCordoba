@@ -135,7 +135,7 @@ const ChatBoot = ({ chatMessages }) => {
                     });
 
                     const textoOpcionAbierta = "Escribí tu pregunta si no encontrás una opción";
-                    preguntas += `${secuenciaId})  ${textoOpcionAbierta}\r\n`;
+                    preguntas += `${secuenciaId})  ${textoOpcionAbierta}\r\n`;
                     preguntas = preguntas.replace(/\r\n/g, "<br>");
                     // MODIFICADO: Guardamos el texto de la opción de pregunta abierta
                     misOpciones.push({
@@ -173,7 +173,7 @@ const ChatBoot = ({ chatMessages }) => {
                 });
 
                 const textoOpcionAbierta = "Escribí tu pregunta si no encontrás una opción";
-                error += `${secuenciaId})  ${textoOpcionAbierta}\r\n`;
+                error += `${secuenciaId})  ${textoOpcionAbierta}\r\n`;
                 misOpcionesError.push({
                     idOriginal: "x",
                     idSecuencial: secuenciaId.toString(),
@@ -214,7 +214,7 @@ const ChatBoot = ({ chatMessages }) => {
                     secuenciaId++;
                 });
                 const textoOpcionAbierta = "Escribí tu pregunta si no encontrás una opción";
-                primerPregunta += `${secuenciaId})  ${textoOpcionAbierta}\r\n`;
+                primerPregunta += `${secuenciaId})  ${textoOpcionAbierta}\r\n`;
                 misOpciones.push({
                     idOriginal: "x",
                     idSecuencial: secuenciaId.toString(),
