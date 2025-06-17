@@ -27,6 +27,7 @@ import eventoRouter from "./evento.routes.js";
 import { Router } from "express";
 import AvisoRouter from "./aviso.routes.js"
 import ApiArgentinaFeriadosRouter from "./api.routes.js";
+import consultasChatbotRouter from "./consultasChatbot.routes.js"
 
 const router = Router();
 
@@ -63,5 +64,6 @@ router.use("/tiposCertificaciones", tipoCertificacionRouter)
 router.use("/eventos", eventoRouter)
 router.use("/avisos", AvisoRouter)
 router.use("/argentina/feriados", ApiArgentinaFeriadosRouter)
+router.use("/consultasChatbot", consultasChatbotRouter)
 
 export default router

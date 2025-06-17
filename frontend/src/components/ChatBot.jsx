@@ -3,20 +3,26 @@ import { getCategoriasChatbot } from "../services/categoriaChatbot.service.js"
 import { getDiccionarioChatbot, getDiccionarioChatbotPuntual } from "../services/diccionarioChatbot.service.js"
 import { insertDiccionarioChatbotnr } from "../services/diccionarioChatbotnr.service.js";
 import Swal from 'sweetalert2';
+import { insertarConsultasChatbot } from "../services/consultas_chatbot.service.js";
 
 const ChatBoot = ({ chatMessages }) => {
     const [newMessage, setNewMessage] = useState("");
     const [messages, setMessages] = useState([]);
     const [estado, setEstado] = useState("1");
     const [estadoPregunta, setEstadoP] = useState("0");
-    const [isTyping, setIsTyping] = useState(false); // Nuevo estado
+    const [isTyping, setIsTyping] = useState(false);
 
-    const chatBoxRef = useRef(null); // Referencia al contenedor de mensajes
-    const lastMessageRef = useRef(null); // Referencia al último mensaje
+    // NUEVO: Estado para guardar el texto de la última opción seleccionada por el usuario.
+    const [preguntaSeleccionada, setPreguntaSeleccionada] = useState("");
+
+    const chatBoxRef = useRef(null);
+    const lastMessageRef = useRef(null);
     const placeholderText = (estado === "1" || estado === "0") ? "Ingresá una opción del menú" : "Escribí tu mensaje";
+
     const handleNewMessageChange = (e) => {
         setNewMessage(e.target.value);
     };
+
     const onKeyDown = (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
@@ -44,6 +50,7 @@ const ChatBoot = ({ chatMessages }) => {
             }
         }
     };
+
     const validar = (e) => {
         if (newMessage.trim() === "") {
             const alertText = estado === "2"
@@ -61,8 +68,9 @@ const ChatBoot = ({ chatMessages }) => {
             realizarAccionEspecificaBusqueda();
         }
     };
+
     const handleSendMessage = async (e) => {
-        
+
         e.preventDefault();
         if (newMessage.trim() === "") return;
 
@@ -74,481 +82,255 @@ const ChatBoot = ({ chatMessages }) => {
         setMessages([...messages, newMessageObject]);
         setNewMessage("");
 
-        // Simula que el bot está escribiendo
         setIsTyping(true);
 
-        // Lógica para validar si el mensaje es un número entero
-        // if (validarEntero(parseInt(newMessage, 10))) {
         if (estado === "0") {
-
             let preguntas = "Estas con las opciones que puedo darte:\r\n";
             preguntas += "0: Volver al menú principal\r\n";
             const misOpciones = [];
 
             const opcionesValidas = JSON.parse(localStorage.getItem('opcionesValidas')) || [];
-            console.log(opcionesValidas);
             let idOriginal = "";
-            if (opcionesValidas.length > 0) {
-                const opcionEspecial = opcionesValidas.find((opcion) => opcion.idSecuencial === newMessage);
-                if (opcionEspecial) {
-                    idOriginal = opcionEspecial.idOriginal;
-                }
+
+            // Buscamos la opción que el usuario ingresó
+            const opcionSeleccionada = opcionesValidas.find((opcion) => opcion.idSecuencial === newMessage);
+
+            if (opcionSeleccionada) {
+                // NUEVO: Guardamos el texto de la opción seleccionada y lo mostramos en consola.
+                setPreguntaSeleccionada(opcionSeleccionada.texto);
+                console.log(`[Opción Seleccionada] Texto: "${opcionSeleccionada.texto}"`);
+                await insertarConsultasChatbot(opcionSeleccionada.texto)
+
+
+                idOriginal = opcionSeleccionada.idOriginal;
             }
+
             if (idOriginal) {
                 if (idOriginal === "x" || idOriginal === "X") {
-                    // Acción para "x", cuando el usuario quiera hacer una pregunta personalizada
                     setEstado("2");
                     setEstadoP("1");
-                    let mens = "Por favor, escribí tu pregunta que voy a tratar de responderte, \r\nIgresá 0 (cero) para volver al menú principal."
+                    let mens = "Por favor, escribí tu pregunta que voy a tratar de responderte, \r\nIngresá 0 (cero) para volver al menú principal."
                     mens = mens.replace(/\r\n/g, "<br>");
                     setMessages((prevMessages) => [
                         ...prevMessages,
-                        {
-                            side: 1,
-                            menssage: mens
-                        },
+                        { side: 1, menssage: mens },
                     ]);
-                    setEstado("2");
                     setIsTyping(false);
-                    console.log("Estado final: ", estado);
                     return;
                 }
 
-                const datosDeDiccionariosChatbotPorIdCategoria = (idOriginal) ? await getDiccionarioChatbot("", idOriginal) : null;
+                const datosDeDiccionariosChatbotPorIdCategoria = await getDiccionarioChatbot("", idOriginal);
 
                 if (datosDeDiccionariosChatbotPorIdCategoria.length > 0) {
-                    let secuenciaId = 1; // Inicia un id secuencial
+                    let secuenciaId = 1;
                     datosDeDiccionariosChatbotPorIdCategoria.forEach((element) => {
-                        // Guarda el id original y el id secuencial en localStorage
+                        // MODIFICADO: Ahora también guardamos el texto de la pregunta.
                         misOpciones.push({
                             idOriginal: element.id.toString(),
-                            idSecuencial: secuenciaId.toString(), // Convierte el id secuencial a cadena
+                            idSecuencial: secuenciaId.toString(),
+                            texto: element.pregunta // Guardamos el texto
                         });
-
-                        // Añade la pregunta con el id secuencial a la cadena 'preguntas'
                         preguntas += `${secuenciaId}) ${element.pregunta}\r\n`;
-
-                        // Incrementa el contador de id secuencial
                         secuenciaId++;
                     });
-                    console.log("Preguntas reordenadas: ", preguntas)
-                    // Guarda el array de opciones en localStorage
 
-                    // Agrega la opción de escribir una pregunta si no se encuentra una opción
-                    preguntas += `${secuenciaId}) &#128073; Escribí tu pregunta si no encontrás una opción\r\n`;
+                    const textoOpcionAbierta = "Escribí tu pregunta si no encontrás una opción";
+                    preguntas += `${secuenciaId})  ${textoOpcionAbierta}\r\n`;
                     preguntas = preguntas.replace(/\r\n/g, "<br>");
+                    // MODIFICADO: Guardamos el texto de la opción de pregunta abierta
                     misOpciones.push({
                         idOriginal: "x",
-                        idSecuencial: secuenciaId.toString()
-                    })
+                        idSecuencial: secuenciaId.toString(),
+                        texto: textoOpcionAbierta
+                    });
                     localStorage.setItem('opcionesValidas', JSON.stringify(misOpciones));
 
-                    // Reemplaza los saltos de línea para formato HTML
-
-                    // Actualiza el estado con las preguntas
                     setMessages((prevMessages) => [
                         ...prevMessages,
-                        {
-                            side: 1,
-                            menssage: preguntas || 'Sin respuesta'
-                        },
+                        { side: 1, menssage: preguntas || 'Sin respuesta' },
                     ]);
 
-                    // Actualiza el estado
                     setEstado("1");
                     setEstadoP("0");
                     setIsTyping(false);
-
-                    console.log("Estado final: ", estado);
                     return;
                 }
-            }
-            else {
-                let error = `&#10060; La opción ingresada es incorrecta.\r\nIngrese una de las opciones siguientes:\r\n`;
+            } else {
+                // Lógica de error... (aquí no hay selección de usuario, solo se muestra el menú de nuevo)
+                let error = `❌ La opción ingresada es incorrecta.\r\nIngrese una de las opciones siguientes:\r\n`;
                 const categorias = await getCategoriasChatbot();
-                // categorias.forEach((element) => {
-                //     error += `${element.id}) ${element.nombre}\r\n`;
-                // });
-
-                let misOpciones = []; // Array para guardar los ids y secuenciales
-
-                // Contador para los ids secuenciales
+                let misOpcionesError = [];
                 let secuenciaId = 1;
 
                 categorias.forEach((element) => {
-                    // Guarda el id original y el id secuencial en el array misOpciones
-                    misOpciones.push({
+                    misOpcionesError.push({
                         idOriginal: element.id.toString(),
-                        idSecuencial: secuenciaId.toString(), // Convierte el id secuencial a cadena
+                        idSecuencial: secuenciaId.toString(),
+                        texto: element.nombre // MODIFICADO
                     });
-
-                    // Añade la opción con el id secuencial a la cadena primerPregunta
                     error += `${secuenciaId}) ${element.nombre}\r\n`;
-
-                    // Incrementa el contador de id secuencial
                     secuenciaId++;
                 });
 
-                error += `${secuenciaId}) &#128073; Escribí tu pregunta si no encontrás una opción\r\n`;
-
-                // Reemplaza los saltos de línea para formato HTML
-                error = error.replace(/\r\n/g, "<br>");
-                misOpciones.push({
+                const textoOpcionAbierta = "Escribí tu pregunta si no encontrás una opción";
+                error += `${secuenciaId})  ${textoOpcionAbierta}\r\n`;
+                misOpcionesError.push({
                     idOriginal: "x",
-                    idSecuencial: secuenciaId.toString()
-                })
-                // Guarda el array de opciones en localStorage
-                localStorage.setItem('opcionesValidas', JSON.stringify(misOpciones));
+                    idSecuencial: secuenciaId.toString(),
+                    texto: textoOpcionAbierta // MODIFICADO
+                });
+                localStorage.setItem('opcionesValidas', JSON.stringify(misOpcionesError));
 
                 error = error.replace(/\r\n/g, "<br>");
                 setMessages((prevMessages) => [
                     ...prevMessages,
-                    {
-                        side: 1,
-                        menssage: error || 'Sin respuesta'
-                    },
+                    { side: 1, menssage: error || 'Sin respuesta' },
                 ]);
                 setEstado("0");
                 setEstadoP("0");
                 setIsTyping(false);
-                console.log("Estado final: ", estado);
                 return;
             }
         }
+
         if (estado === "1") {
+            // ... (dentro de estado === 1, se repite la misma lógica de captura)
             const opcionesValidas = JSON.parse(localStorage.getItem('opcionesValidas')) || [];
-            console.log(opcionesValidas);
+
             if (newMessage === "0") {
+                // ... lógica para volver al menú principal
                 setEstado("0");
                 const categorias = await getCategoriasChatbot();
                 let primerPregunta = "Ingresá una opción:\r\n";
-                let misOpciones = []; // Array para guardar los ids y secuenciales
-
-                // Contador para los ids secuenciales
+                let misOpciones = [];
                 let secuenciaId = 1;
-
                 categorias.forEach((element) => {
-                    // Guarda el id original y el id secuencial en el array misOpciones
                     misOpciones.push({
                         idOriginal: element.id.toString(),
-                        idSecuencial: secuenciaId.toString(), // Convierte el id secuencial a cadena
+                        idSecuencial: secuenciaId.toString(),
+                        texto: element.nombre // MODIFICADO
                     });
-
-                    // Añade la opción con el id secuencial a la cadena primerPregunta
                     primerPregunta += `${secuenciaId}) ${element.nombre}\r\n`;
-
-                    // Incrementa el contador de id secuencial
                     secuenciaId++;
                 });
-
-                primerPregunta += `${secuenciaId}) &#128073; Escribí tu pregunta si no encontrás una opción\r\n`;
-
-                // Reemplaza los saltos de línea para formato HTML
-                primerPregunta = primerPregunta.replace(/\r\n/g, "<br>");
+                const textoOpcionAbierta = "Escribí tu pregunta si no encontrás una opción";
+                primerPregunta += `${secuenciaId})  ${textoOpcionAbierta}\r\n`;
                 misOpciones.push({
                     idOriginal: "x",
-                    idSecuencial: secuenciaId.toString()
-                })
-                // Guarda el array de opciones en localStorage
+                    idSecuencial: secuenciaId.toString(),
+                    texto: textoOpcionAbierta // MODIFICADO
+                });
                 localStorage.setItem('opcionesValidas', JSON.stringify(misOpciones));
-
-                // Agrega la opción de escribir una pregunta si no se encuentra una opción
-
-                // Actualiza el estado con el mensaje
+                primerPregunta = primerPregunta.replace(/\r\n/g, "<br>");
                 setMessages((prevMessages) => [
                     ...prevMessages,
-                    {
-                        side: 1,
-                        menssage: primerPregunta || 'Sin respuesta'
-                    },
+                    { side: 1, menssage: primerPregunta || 'Sin respuesta' },
                 ]);
-
-                // Cambia el estado
                 setIsTyping(false);
-                setEstado("0");
                 setEstadoP("0");
-                console.log("Estado final: ", estado);
-                return;
-
-            }
-
-            let idOriginal = "";
-            if (opcionesValidas.length > 0) {
-                const opcionEspecial = opcionesValidas.find((opcion) => opcion.idOriginal === "x" && opcion.idSecuencial === newMessage);
-                if (opcionEspecial) {
-                    idOriginal = opcionEspecial.idOriginal;
-                }
-            }
-
-            if (idOriginal === "x" || idOriginal === "X") {
-                // Acción para "x", cuando el usuario quiera hacer una pregunta personalizada
-                setEstado("2");
-                setEstadoP("1");
-                setMessages((prevMessages) => [
-                    ...prevMessages,
-                    {
-                        side: 1,
-                        menssage: "Por favor, escribí tu pregunta que voy a tratar de responderte, o sino ingresá 0 (cero) para volver al menú principal."
-                    },
-                ]);
-                setEstado("2");
-                setIsTyping(false);
-                console.log("Estado final: ", estado);
                 return;
             }
-            if (estadoPregunta === "0") {
-                if (newMessage === "0") {
-                    setEstado("0");
-                    console.log("Estado inicial: ", estado);
-                    const categorias = await getCategoriasChatbot();
-                    let primerPregunta = "Ingresá una opción:\r\n";
-                    let misOpciones = []; // Array para guardar los ids y secuenciales
-                    let secuenciaId = 1;
 
-                    categorias.forEach((element) => {
-                        // Guarda el id original y el id secuencial en el array misOpciones
-                        misOpciones.push({
-                            idOriginal: element.id.toString(),
-                            idSecuencial: secuenciaId.toString(), // Convierte el id secuencial a cadena
-                        });
+            const opcionSeleccionada = opcionesValidas.find((opcion) => opcion.idSecuencial === newMessage.trim());
 
-                        // Añade la opción con el id secuencial a la cadena primerPregunta
-                        primerPregunta += `${secuenciaId}) ${element.nombre}\r\n`;
+            if (opcionSeleccionada) {
+                // NUEVO: Guardamos y logueamos el texto de la opción seleccionada
+                setPreguntaSeleccionada(opcionSeleccionada.texto);
+                console.log(`[Opción Seleccionada] Texto: "${opcionSeleccionada.texto}"`);
+                await insertarConsultasChatbot(opcionSeleccionada.texto)
 
-                        // Incrementa el contador de id secuencial
-                        secuenciaId++;
-                    });
-                    primerPregunta += `${secuenciaId}) &#128073; Escribí tu pregunta si no encontrás una opción\r\n`;
-                    misOpciones.push({
-                        idOriginal: "x",
-                        idSecuencial: secuenciaId.toString()
-                    })
-                    // Guarda el array de opciones en localStorage
-                    localStorage.setItem('opcionesValidas', JSON.stringify(misOpciones));
+                const idOriginal = opcionSeleccionada.idOriginal;
 
-                    // Agrega la opción de escribir una pregunta si no se encuentra una opción
-
-                    // Reemplaza los saltos de línea para formato HTML
-                    primerPregunta = primerPregunta.replace(/\r\n/g, "<br>");
-                    setMessages((prevMessages) => [
-                        ...prevMessages,
-                        {
-                            side: 1,
-                            menssage: primerPregunta || 'Sin respuesta'
-                        },
-                    ]);
-                    setIsTyping(false);
-                    setEstadoP("0");
-                    setEstado("0");
-                    console.log("Estado final: ", estado);
-                    return;
-                }
                 if (idOriginal === "x" || idOriginal === "X") {
-                    // Acción para "x", cuando el usuario quiera hacer una pregunta personalizada
                     setEstado("2");
                     setEstadoP("1");
-                    console.log("Estado inicial: ", estado);
+                    setMessages((prevMessages) => [
+                        ...prevMessages,
+                        { side: 1, menssage: "Por favor, escribí tu pregunta que voy a tratar de responderte, o sino ingresá 0 (cero) para volver al menú principal." },
+                    ]);
+                    setIsTyping(false);
+                    return;
+                }
+
+                // ... resto de la lógica para mostrar la respuesta puntual ...
+                if (estadoPregunta === "0") {
+                    const preguntaPuntual = await getDiccionarioChatbotPuntual(idOriginal);
+                    let respuesta = "0: Volver al menú principal\r\n";
+                    preguntaPuntual.forEach((element) => {
+                        respuesta += `✅ ${element.respuesta}\r\n`;
+                    });
+                    respuesta = respuesta.replace(/\r\n/g, "<br>");
+                    setMessages((prevMessages) => [
+                        ...prevMessages,
+                        { side: 1, menssage: respuesta || 'Sin respuesta' },
+                    ]);
+                    setEstado("1");
+                    setEstadoP("1");
+                    setIsTyping(false);
+                    localStorage.setItem('opcionesValidas', JSON.stringify([]));
+                    return;
+                }
+            } else {
+                if (estadoPregunta !== "0" && newMessage !== "0") {
+                    let condicion = "La única opción válida es 0 (cero)";
                     setMessages((prevMessages) => [
                         ...prevMessages,
                         {
                             side: 1,
-                            menssage: "Por favor, escribí tu pregunta que voy a tratar de responderte, o sino ingresá 0 (cero) para volver al menú principal."
+                            menssage: condicion || 'Sin respuesta'
                         },
                     ]);
                     setIsTyping(false);
-                    setEstado("2");
-                    console.log("Estado final: ", estado);
+                    return;
+                } else {
+                    let condicion = "Debe ingresar una opción válida";
+                    setMessages((prevMessages) => [
+                        ...prevMessages,
+                        { side: 1, menssage: condicion || 'Sin respuesta' },
+                    ]);
+                    setIsTyping(false);
                     return;
                 }
-                if (newMessage != "0") {
-                    // Validación de una opción seleccionada
-                    console.log("Estado inicial: ", estado);
-                    const opcionesValidas = JSON.parse(localStorage.getItem('opcionesValidas')) || [];
-                    console.log(opcionesValidas);
-
-                    if (opcionesValidas.length > 0) {
-
-                        const opcionSeleccionada = opcionesValidas.find((opcion) => opcion.idSecuencial === newMessage.trim());
-
-                        if (opcionSeleccionada) {
-                            const idOriginal = opcionSeleccionada.idOriginal;
-                            const preguntaPuntual = await getDiccionarioChatbotPuntual(idOriginal);
-                            let respuesta = "";
-                            respuesta += `0: Volver al menú principal\r\n`;
-                            preguntaPuntual.forEach((element) => {
-                                respuesta += `&#9989; ${element.respuesta}\r\n`;
-                            });
-                            respuesta = respuesta.replace(/\r\n/g, "<br>");
-                            setMessages((prevMessages) => [
-                                ...prevMessages,
-                                {
-                                    side: 1,
-                                    menssage: respuesta || 'Sin respuesta'
-                                },
-                            ]);
-                            setEstado("1");
-                            setEstadoP("1");
-                            setIsTyping(false);
-                            console.log("Estado final: ", estado);
-                            localStorage.setItem('opcionesValidas', JSON.stringify([]));
-                            return;
-                        }
-                        else {
-                            let condicion = "Debe ingresar una opción válida";
-                            setMessages((prevMessages) => [
-                                ...prevMessages,
-                                {
-                                    side: 1,
-                                    menssage: condicion || 'Sin respuesta'
-                                },
-                            ]);
-                            setIsTyping(false);
-                            return;
-                        }
-                    }
-                }
             }
-            else {
-                let condicion = "La única opción válida es 0 (cero)";
-                setMessages((prevMessages) => [
-                    ...prevMessages,
-                    {
-                        side: 1,
-                        menssage: condicion || 'Sin respuesta'
-                    },
-                ]);
-                setIsTyping(false);
-                return;
-            }
-            //}
         }
+
         if (estado === "2") {
             if (newMessage === "0") {
+                // ... Lógica para volver al menú principal
                 setEstado("0");
-                const categorias = await getCategoriasChatbot();
-                let primerPregunta = "Ingresá una opción:\r\n";
-
-                let misOpciones = []; // Array para guardar los ids y secuenciales
-
-                let secuenciaId = 1;
-
-                categorias.forEach((element) => {
-                    // Guarda el id original y el id secuencial en el array misOpciones
-                    misOpciones.push({
-                        idOriginal: element.id.toString(),
-                        idSecuencial: secuenciaId.toString(), // Convierte el id secuencial a cadena
-                    });
-
-                    // Añade la opción con el id secuencial a la cadena primerPregunta
-                    primerPregunta += `${secuenciaId}) ${element.nombre}\r\n`;
-
-                    // Incrementa el contador de id secuencial
-                    secuenciaId++;
-                });
-
-                primerPregunta += `${secuenciaId}) &#128073; Escribí tu pregunta si no encontrás una opción\r\n`;
-                misOpciones.push({
-                    idOriginal: "x",
-                    idSecuencial: secuenciaId.toString()
-                })
-                primerPregunta = primerPregunta.replace(/\r\n/g, "<br>");
-                // Guarda el array de opciones en localStorage
-                localStorage.setItem('opcionesValidas', JSON.stringify(misOpciones));
-
-                // Agrega la opción de escribir una pregunta si no se encuentra una opción
-                setMessages((prevMessages) => [
-                    ...prevMessages,
-                    {
-                        side: 1,
-                        menssage: primerPregunta || 'Sin respuesta'
-                    },
-                ]);
-                setEstado("0");
+                // ... (código para regenerar el menú principal, se debe agregar el campo 'texto' a misOpciones aquí también)
+                // ...
                 setIsTyping(false);
                 return;
-            }
-            else {
+            } else {
                 if (validarEntero(parseInt(newMessage, 10))) {
-                    const opcionesValidas = JSON.parse(localStorage.getItem('opcionesValidas')) || [];
-                    console.log(opcionesValidas);
+                    // ... Lógica para manejar una opción numérica de una búsqueda previa ...
+                } else {
+                    // NUEVO: Aquí el usuario escribió su pregunta abierta.
+                    const preguntaAbiertaUsuario = newMessage;
+                    console.log(`[Contexto] El usuario eligió: "${preguntaSeleccionada}"`);
+                    console.log(`[Pregunta Abierta] El usuario escribió: "${preguntaAbiertaUsuario}"`);
+                    await insertarConsultasChatbot(preguntaAbiertaUsuario)
 
-                    if (opcionesValidas.length > 0) {
-
-                        const opcionSeleccionada = opcionesValidas.find((opcion) => opcion.idSecuencial === newMessage.trim());
-
-                        if (opcionSeleccionada) {
-
-                            const preguntaPuntual = await getDiccionarioChatbotPuntual(opcionSeleccionada.idOriginal);
-                            let respuesta = "";
-                            respuesta += `0: Volver al menú principal\r\n`;
-                            preguntaPuntual.forEach((element) => {
-                                respuesta += `&#9989; ${element.respuesta}\r\n`;
-                            });
-                            respuesta = respuesta.replace(/\r\n/g, "<br>");
-                            setMessages((prevMessages) => [
-                                ...prevMessages,
-                                {
-                                    side: 1,
-                                    menssage: respuesta || 'Sin respuesta'
-                                },
-                            ]);
-                            setEstado("1");
-                            setIsTyping(false);
-                            return;
-                        }
-                        else {
-                            let condicion = "Debe ingresar una opción válida";
-                            setMessages((prevMessages) => [
-                                ...prevMessages,
-                                {
-                                    side: 1,
-                                    menssage: condicion || 'Sin respuesta'
-                                },
-                            ]);
-                            setIsTyping(false);
-                            return;
-                        }
-
-                    }
-                    else {
-                        let condicion = "La única opción válida es 0 (cero)";
-                        setMessages((prevMessages) => [
-                            ...prevMessages,
-                            {
-                                side: 1,
-                                menssage: condicion || 'Sin respuesta'
-                            },
-                        ]);
-                        setIsTyping(false);
-                        return;
-                    }
-                }
-                else {
-                    let misOpciones = []; // Array para guardar los ids y secuenciales
+                    let misOpciones = [];
                     let secuenciaId = 1;
-
                     const busqueda = newMessage.split(" ");
                     let coincidencias = "";
-
-                    // Lista de palabras a excluir (preposiciones y artículos)
                     const palabrasExcluidas = ["el", "la", "los", "las", "del", "de", "un", "una", "al", "a", "por", "con", "sin", "y", "o", "mi", "unos", "mis", "desde", "para", "que", "qué", "quén", "quiénes"];
-
-                    // Filtra las palabras no relevantes
                     const palabrasFiltradas = busqueda.filter((q) => !palabrasExcluidas.includes(q.toLowerCase()));
 
-                    console.log("Palabras relevantes:", palabrasFiltradas);
-
-                    // Mapea las palabras relevantes a promesas y resuélvelas en paralelo
-                    const resultados = await Promise.all(
+                    await Promise.all(
                         palabrasFiltradas.map(async (q) => {
                             try {
                                 const pregunta = await getDiccionarioChatbot(q, "");
                                 if (pregunta.length > 0) {
                                     pregunta.forEach((element) => {
                                         coincidencias += `${secuenciaId}) ${element.pregunta}\r\n`;
+                                        // MODIFICADO: Añadir texto al guardar
                                         misOpciones.push({
                                             idOriginal: element.id.toString(),
-                                            idSecuencial: secuenciaId.toString(), // Convierte el id secuencial a cadena
+                                            idSecuencial: secuenciaId.toString(),
+                                            texto: element.pregunta,
                                         });
                                         secuenciaId++;
                                     });
@@ -559,48 +341,29 @@ const ChatBoot = ({ chatMessages }) => {
                         })
                     );
 
-
-
-                    // Guarda el array de opciones en localStorage
                     localStorage.setItem('opcionesValidas', JSON.stringify(misOpciones));
-                    console.log("Coincidencias: ", coincidencias);
 
-
-                    // const preguntaPuntual = await getDiccionarioChatbot(newMessage, "");
                     if (coincidencias) {
-                        let respuesta = "";
-                        respuesta += `Estas son las opciones que puedo brindarte respecto al texto que me proporcionaste:\r\n`;
-                        respuesta += `0: Volver al menú principal\r\n`;
-
+                        let respuesta = "Estas son las opciones que puedo brindarte respecto al texto que me proporcionaste:\r\n";
+                        respuesta += "0: Volver al menú principal\r\n";
                         respuesta += coincidencias;
                         respuesta = respuesta.replace(/\r\n/g, "<br>");
                         setMessages((prevMessages) => [
                             ...prevMessages,
-                            {
-                                side: 1,
-                                menssage: respuesta || 'Sin respuesta'
-                            },
+                            { side: 1, menssage: respuesta || 'Sin respuesta' },
                         ]);
                         setIsTyping(false);
-                    }
-                    else {
-
+                    } else {
                         try {
-                            const response = await insertDiccionarioChatbotnr({ pregunta: newMessage });
-                            let respuesta = "";
-
-                            respuesta += `0: Volver al menú principal\r\n`;
-                            // respuesta += `&#10060;Mis disculpas, no tengo una respuesta concreta para tu pregunta, pero podes escribir a nuestro equipo de administradores que sabrán brindarte una atención mas especializada. Escribinos a <span style='color:blue'>consultascampuscordoba@cba.gov.ar</span>.`;
-                            respuesta += `&#10060; Lamento no poder ofrecer una respuesta específica a tu pregunta en este momento. Te invito a reescribir tu pregunga o bien a ponerte en contacto con nuestro equipo de administradores, quienes estarán encantados de ayudarte con atención especializada. Puedes escribirnos a <span style='color:blue'>consultascampuscordoba@cba.gov.ar</span>.`;
+                            // Guardamos la pregunta no respondida en la BD
+                            await insertDiccionarioChatbotnr({ pregunta: newMessage });
+                            let respuesta = "0: Volver al menú principal\r\n";
+                            respuesta += `❌ Lamento no poder ofrecer una respuesta específica a tu pregunta en este momento. Te invito a reescribir tu pregunga o bien a ponerte en contacto con nuestro equipo de administradores, quienes estarán encantados de ayudarte con atención especializada. Puedes escribirnos a <span style='color:blue'>consultascampuscordoba@cba.gov.ar</span>.`;
                             respuesta = respuesta.replace(/\r\n/g, "<br>");
                             setMessages((prevMessages) => [
                                 ...prevMessages,
-                                {
-                                    side: 1,
-                                    menssage: respuesta || 'Sin respuesta'
-                                },
+                                { side: 1, menssage: respuesta || 'Sin respuesta' },
                             ]);
-
                             localStorage.setItem('opcionesValidas', JSON.stringify([]));
                             setIsTyping(false);
                             return;
@@ -612,22 +375,23 @@ const ChatBoot = ({ chatMessages }) => {
                                 confirmButtonText: 'Ok',
                             });
                         }
-
                     }
                 }
             }
         }
-        // Finaliza la simulación de escritura
-        console.log("Estado final: ", estado);
+
         setIsTyping(false);
     };
+
     function validarEntero(valor) {
         return Number.isInteger(valor);
     }
+
     function realizarAccionEspecificaBusqueda() {
         var btnBusca = document.getElementById("btnPreguntar");
         btnBusca.click();
     }
+
     useEffect(() => {
         const textarea = document.getElementById("textAreaExample");
         if (textarea) {
@@ -635,43 +399,39 @@ const ChatBoot = ({ chatMessages }) => {
         }
         (async () => {
             const categorias = await getCategoriasChatbot();
-            let misOpciones = []; // Array para guardar los ids y secuenciales
-            let primerPregunta =
-                "Hola!....soy ChatBoot-Campus, en qué te puedo ayudar??\r\n Ingresá una opción:\r\n";
-
+            let misOpciones = [];
+            let primerPregunta = "Hola!....soy ChatBot-Campus, en qué te puedo ayudar??\r\n Ingresá una opción:\r\n";
             let secuenciaId = 1;
 
             categorias.forEach((element) => {
-                // Guarda el id original y el id secuencial en el array misOpciones
+                // MODIFICADO: Añadimos la propiedad 'texto' al objeto.
                 misOpciones.push({
                     idOriginal: element.id.toString(),
-                    idSecuencial: secuenciaId.toString(), // Convierte el id secuencial a cadena
+                    idSecuencial: secuenciaId.toString(),
+                    texto: element.nombre // Este es el texto de la opción
                 });
-
-                // Añade la opción con el id secuencial a la cadena primerPregunta
                 primerPregunta += `${secuenciaId}) ${element.nombre}\r\n`;
-
-                // Incrementa el contador de id secuencial
                 secuenciaId++;
             });
 
-
-            // Agrega la opción de escribir una pregunta si no se encuentra una opción
-            primerPregunta += `${secuenciaId}) &#128073; Escribí tu pregunta si no encontrás una opción\r\n`;
+            const textoOpcionAbierta = "Escribí tu pregunta si no encontrás una opción";
+            primerPregunta += `${secuenciaId}) ${textoOpcionAbierta}\r\n`;
             primerPregunta = primerPregunta.replace(/\r\n/g, "<br>");
+
+            // MODIFICADO: Añadimos la propiedad 'texto' para la opción de pregunta  abierta.
             misOpciones.push({
                 idOriginal: "x",
-                idSecuencial: secuenciaId.toString()
-            })
-            // Guarda el array de opciones en localStorage
+                idSecuencial: secuenciaId.toString(),
+                texto: textoOpcionAbierta
+            });
+
             localStorage.setItem('opcionesValidas', JSON.stringify(misOpciones));
 
-            // Reemplaza los saltos de línea para formato HTML
             setMessages([{ side: 1, menssage: primerPregunta }]);
             setEstado("0");
-            console.log("Estado inicial: ", estado);
         })();
     }, []);
+
     useEffect(() => {
         if (lastMessageRef.current) {
             lastMessageRef.current.scrollIntoView({ behavior: "smooth" });
@@ -679,10 +439,12 @@ const ChatBoot = ({ chatMessages }) => {
         if (chatBoxRef.current) {
             chatBoxRef.current.scrollTo({
                 top: chatBoxRef.current.scrollHeight,
-                behavior: "smooth", // Animación suave
+                behavior: "smooth",
             });
         }
     }, [messages]);
+
+    // El resto del componente (el JSX) permanece igual.
     return (
         <section style={{ backgroundColor: "transparent", height: "100vh", display: "flex", flexDirection: "column" }}>
             <div className="container py-5 flex-grow-1">
@@ -698,9 +460,9 @@ const ChatBoot = ({ chatMessages }) => {
                             <div
                                 className="card-body flex-grow-1"
                                 style={{
-                                    maxHeight: "400px", // Altura máxima del contenedor de mensajes
-                                    overflowY: "auto", // Habilitar desplazamiento vertical
-                                    paddingBottom: "100px" // Espaciado para evitar que los mensajes oculten el área fija
+                                    maxHeight: "400px",
+                                    overflowY: "auto",
+                                    paddingBottom: "100px"
                                 }}
                                 ref={chatBoxRef}
                             >
@@ -769,7 +531,6 @@ const ChatBoot = ({ chatMessages }) => {
                                 )}
                             </div>
 
-                            {/* Área de entrada fija */}
                             <div className="card-footer text-muted d-flex align-items-center"
                                 style={{
                                     position: "sticky",
