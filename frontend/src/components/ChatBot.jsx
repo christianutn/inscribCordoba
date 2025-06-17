@@ -418,7 +418,7 @@ const ChatBoot = ({ chatMessages }) => {
             primerPregunta += `${secuenciaId})  ${textoOpcionAbierta}\r\n`;
             primerPregunta = primerPregunta.replace(/\r\n/g, "<br>");
 
-            // MODIFICADO: Añadimos la propiedad 'texto' para la opción de pregunta abierta.
+            // MODIFICADO: Añadimos la propiedad 'texto' para la opción de pregunta  abierta.
             misOpciones.push({
                 idOriginal: "x",
                 idSecuencial: secuenciaId.toString(),
