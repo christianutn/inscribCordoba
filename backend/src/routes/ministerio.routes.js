@@ -7,9 +7,9 @@ const ministerioRouter = Router();
 
 
 ministerioRouter.get("/", passport.authenticate('jwt', {session: false}), autorizar(['ADM', 'REF', 'GA']), getMinisterios)
-ministerioRouter.put("/",  passport.authenticate('jwt', {session: false}), autorizar(['ADM']), putMinisterio)
+ministerioRouter.put("/",  passport.authenticate('jwt', {session: false}), autorizar(['ADM', 'REF', 'GA']), putMinisterio)
 ministerioRouter.delete("/:cod",  passport.authenticate('jwt', {session: false}), autorizar(['ADM']), deleteMinisterio)
-ministerioRouter.post("/", passport.authenticate('jwt', {session: false}), autorizar(['ADM']), postMinisterio)
+ministerioRouter.post("/", passport.authenticate('jwt', {session: false}), autorizar(['ADM', 'REF', 'GA']), postMinisterio)
 
 export default ministerioRouter
 

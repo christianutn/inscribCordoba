@@ -196,7 +196,7 @@ export const updateCurso = async (req, res, next) => {
                 tipo_capacitacion,
                 area,
                 esVigente: parseEsVigente(esVigente),
-                tiene_evento_creado: tiene_evento_creado === "Si" ? 1 : 0
+                tiene_evento_creado: (tiene_evento_creado === "Si" || tiene_evento_creado) ? 1 : 0
             },
             {
                 where: {

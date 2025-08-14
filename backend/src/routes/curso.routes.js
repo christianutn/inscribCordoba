@@ -8,9 +8,9 @@ const cursoRouter = Router();
 
 cursoRouter.get("/", passport.authenticate('jwt', {session: false}), autorizar(['ADM', 'REF', 'GA']), getCursos)
 
-cursoRouter.post("/",passport.authenticate('jwt', {session: false}), autorizar(['ADM']), postCurso)
+cursoRouter.post("/",passport.authenticate('jwt', {session: false}), autorizar(['ADM', 'REF', 'GA']), postCurso)
 
-cursoRouter.put("/", passport.authenticate('jwt', {session: false}), autorizar(['ADM']),updateCurso)
+cursoRouter.put("/", passport.authenticate('jwt', {session: false}), autorizar(['ADM', 'REF', 'GA']),updateCurso)
 
 
 cursoRouter.delete("/:cod", passport.authenticate('jwt', {session: false}), autorizar(['ADM']), deleteCurso)

@@ -43,6 +43,7 @@ import ReporteCursos from "./ReporteCursosCC.jsx";
 import CrearAviso from './CrearAviso.jsx';
 import VersionReducidaGa from './VersionReducidaGA.jsx';
 import VersionReducidaAdministradores from './VersionReducidaAdministradores.jsx';
+import ABMReferentes from "./ABMReferentes.jsx"
 
 
 import { getMyUser } from "../services/usuarios.service.js";
@@ -55,11 +56,13 @@ const menuItemsConfig = [
   { label: "Ver Calendario", identifier: "Calendario", icon: <CalendarMonthIcon />, roles: ["ADM", "REF", 'GA'] },
   { label: "Crear Evento", identifier: "Eventos", icon: <AddCircleOutlineIcon />, roles: ["ADM", "REF", 'GA'] },
   { label: "Reporte de Cursos", identifier: "ReporteCursosIdentifier", icon: <AssessmentIcon />, roles: ["ADM", "REF", 'GA'] },
-  { label: "Administrar Usuarios/Cursos", identifier: "AltaBajaModificion", icon: <SettingsSuggestIcon />, roles: ["ADM"] },
+  { label: "Administrar Entidades", identifier: "AltaBajaModificion", icon: <SettingsSuggestIcon />, roles: ["ADM"] },
   { label: "Restricciones Fechas", identifier: "RestriccionesFechasInicioCursada", icon: <GavelIcon />, roles: ["ADM"] },
   { label: "Crear Aviso", identifier: "CrearAviso", icon: <CampaignIcon />, roles: ["ADM"] },
   { label: "Version reducida GA", identifier: "VersionReducidaGa", icon: <InsertInvitationIcon />, roles: ['GA'] },
   { label: "Version reducida Administradores", identifier: "VersionReducidaAdministradores", icon: <InsertInvitationIcon />, roles: ['ADM'] },
+  { label: "Administrar Cursos, Referentes y Áreas", identifier: "ABMReferentes", icon: <SettingsSuggestIcon />, roles: ["REF"] },
+
 ];
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
@@ -207,6 +210,8 @@ export default function Principal() {
       case "CrearAviso": return <CrearAviso />;
       case "VersionReducidaGa": return <VersionReducidaGa />;
       case "VersionReducidaAdministradores": return <VersionReducidaAdministradores />;
+      case "ABMReferentes": return <ABMReferentes />;
+
       case "Home":
       default: return <Home nombre={user?.nombre} setOpcionSeleccionada={setOpcionSeleccionada} />;
     }

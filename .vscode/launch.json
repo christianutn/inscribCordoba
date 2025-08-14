@@ -1,0 +1,30 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Program",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}\\backend\\src\\index.js",
+            "env": {
+                "DB_NAME": "bd_inscribcordoba_prod",
+                "DB_USER": "christian",
+                "DB_PASSWORD": "Cairo2024",
+                "DB_HOST": "bdinscribcordoba.mysql.database.azure.com",
+                "DB_PORT": "3306",
+                "SALT": "11",
+                "JWT_SECRET":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7InVzZXIiOiJhZG1pbiJ9LCJpYXQiOjE3MTgyMTI5NTUsImV4cCI6MTcxODI1NjE1NX0.KbrqAxK8EUEDfhILIOVx_kXINR-2jF4nSil9N0W4aJks",
+                "GOOGLE_SHEETS_SPREADSHEETS_ID": "149Ft5e-y8VUpvjkCtFIVBkYNVjclOhiqH39SkI27rnU",
+                "GOOGLE_SHEETS_CLIENT_EMAIL":"inscibcordoba@inscribcordoba.iam.gserviceaccount.com",
+                "GOOGLE_SHEETS_PRIVATE_KEY": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC+ssiSazLh2wYk\ni2ZZBKn2BkIFBY71cspM6ZbnAK859OJswNGz2YDHv9niF46+bvV74itEWBSP1HWY\nJp0YA/gS7tk3w5pTFJjv/Vkd7HlH+utsjezMlnBjvBfp0xdQtXu0MCSTR5gwnAea\nHXHVsiJoW1qIj3JLE2PtEI+9ifbV4FldcLYezwdsVv3UDDwSk6/zNFoV7ztbSjmq\n22o2lM3+CgIAGc2d16AwYK6BH0z63uCavDQDKF8woyokg69aPNmdUiEiFgcu9D8D\nEr7mtkdBC1GsOl8PK7aoGhXkNAzY6hwlFHEQXDBQMH3qn83JQcwK/O6FbyB2FdYl\nYjeg+W0PAgMBAAECggEAQu6oZG/Yv5oq+UeuSB9Rckc3A+E0EKVWKRGxw+mjFxID\nKQ2ybNAyGaoWVPtUwDVc1zsGWaoaqXL2RU2EROobt7V6q05ty6xGk7FWBqE53lBN\nMmBMFXDWCMN7lzfejpbsUM23ALSXz7PsHSUpj8pCtmMeDyFeCcjIAWyXLv0OFHnZ\n7WL+LAb2ifpten5DXgJWPNWde02KOMwItSplzSFOAXeXn1Ofm0AbL7S/FaBH8Lpt\npPzNOzlxeju6AcnntocRukQgyFwlMg0OvF9kUI2LTV7ZFuNYWlf8kXuOBIcJH+0P\nBpxYUIz8k2TuSBbu5JrHAayv4IRj05RDhgJ1gKLhnQKBgQD+cyltVj79E5QOVSY2\nJDTBeDxgI4eI2wI/61zMGKR5PGPK8rBH7m7X482dywyKxaQZgmmOdYhj6vHGnk8n\nioychZK3tdQtHIDodGFIJr/1zHY9sEmRlnApoy1Mo0N/Q6p4wAZ8fIGHT6SuSRiG\n1chYcNPSJ7kcw006ZAUqmY4l3QKBgQC/3DH/v2hJPRbKBkQjlmXIz8OMcoZDbulB\nM3RSz4yFzjOzLAalNcrWUBpqagjKqoFZe/U0Cle3nDK4BGOrF3gCzibYpgNdvszr\nbDU4fltiYNqnIdNDUoticdnSauyPwO3C1qbmS1riVe3yVOgprkg5zCroWIWU8M+1\nLU/EnZkd2wKBgQDqzeDTybvUlIWS+FaLrbuVMVwdp4vB6cBYtdvrZ24XhnfcZznv\nFwLobIpo62AGiz3UYHkCAkm7UqqMC7ill4AMTGLI7pz+iAgY+pRvHXsU2vneEVjC\nZZ3ZfoAl8Z8uyIV+ak1SAR8Se5dPUZq1ioAXxP5jN07mUP9qO7RczFjVbQKBgEl6\nQB/NI1hhL/ghHDlw4PxeLWr9dVQgBu70kMkiOZQJG52z77uX9V3MgcFdaI6NbEpk\nAc1zZJKqHHaDH9SngUu5vgDc248sgnhrEZrYMZFkvHijqLAwzbbfGWfPkVegsK4c\n3QB3vY/PDvju8Zb86yZPfeNL+6TF8RZXCySmorxfAoGBAIalTBa/XFs9G3A2peGe\np+xnXW7BHe5yaOhzOz2b1fht1NNbhf6BiJgRII1+r+Ac+dbzjbAbW0kfBn9D0koc\nZKx1xLWDW9KZyLhwKHsuNf2AD0WoKdodXUvAKyrj6Q9WxZLRBitVWY6kTBdDj6Lr\nEQKl0kMP4wIZaV2p7uDAYujv\n-----END PRIVATE KEY-----\n",
+                "GOOGLE_SHEETS_NOMBRE_HOJA" : "principal"
+              }
+        }
+    ]
+}

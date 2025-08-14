@@ -4,25 +4,78 @@ import Curso from "../models/curso.models.js";
 import { actualizarDatosColumna } from "../googleSheets/services/actualizarDatosColumna.js";
 import sequelize from "../config/database.js";
 import parseEsVigente from "../utils/parseEsVigente.js"
+import AreasAsignadasUsuario from "../models/areasAsignadasUsuario.models.js";
+import { Op } from "sequelize";
 
 export const getAreas = async (req, res, next) => {
     try {
-        const ministerioCod = req.query.ministerio // Obtén el código del ministerio de la query string
+        // Obtener los valores del token
+        const { rol, area, cuil } = req.user.user;
+        // Validar datos del usuario
+        if (!cuil || !rol) {
+            const error = new Error("No se encontraron los datos del usuario (rol o cuil)");
+            error.statusCode = 404;
+            throw error;
+        }
+        // Obtener áreas asignadas al usuario
+        const areasAsignadas = await AreasAsignadasUsuario.findAll({
+            where: { usuario: cuil }
 
-        const areas = await areaModel.findAll({
-            include: [
-                {
-                    model: Ministerio, // Utiliza el modelo de Ministerio importado
-                    as: 'detalle_ministerio',
-                    attributes: ['cod', 'nombre'] // Puedes especificar qué atributos del ministerio quieres obtener
-                },
-                {
-                    model: Curso,
-                    as: 'detalle_cursos'
-
-                }
-            ]
         });
+        let areas;
+
+        if (rol === "ADM" || rol === "GA") {
+            areas = await areaModel.findAll({
+                include: [
+                    {
+                        model: Ministerio, // Utiliza el modelo de Ministerio importado
+                        as: 'detalle_ministerio',
+                        attributes: ['cod', 'nombre'] // Puedes especificar qué atributos del ministerio quieres obtener
+                    },
+                    {
+                        model: Curso,
+                        as: 'detalle_cursos'
+
+                    }
+                ]
+            });
+
+        } else {
+            // Validar área para roles no administradores
+            if (!area) {
+                const error = new Error("No se encontraron los datos del usuario (area)");
+                error.statusCode = 404;
+                throw error;
+            }
+            // Crear lista de códigos de área
+            const codigosArea = [area];
+            if (areasAsignadas.length > 0) {
+                areasAsignadas.forEach(areaAsignada => {
+                    codigosArea.push(areaAsignada.area);
+                });
+            }
+
+            areas = await areaModel.findAll({
+                where: {
+                    cod: {
+                        [Op.in]: codigosArea // Filtrar áreas que coincidan con alguno de los códigos en la lista
+                    }
+                },
+                include: [
+                    {
+                        model: Ministerio, // Utiliza el modelo de Ministerio importado
+                        as: 'detalle_ministerio',
+                        attributes: ['cod', 'nombre'] // Puedes especificar qué atributos del ministerio quieres obtener
+                    },
+                    {
+                        model: Curso,
+                        as: 'detalle_cursos'
+
+                    }
+                ]
+            });
+        }
+
 
         if (areas.length === 0) {
             const error = new Error("No existen áreas");
@@ -35,7 +88,6 @@ export const getAreas = async (req, res, next) => {
         next(error);
     }
 }
-
 
 
 export const putArea = async (req, res, next) => {
