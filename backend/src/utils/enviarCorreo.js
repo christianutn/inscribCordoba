@@ -34,4 +34,7 @@ async function enviarCorreo(htmlMensaje, asunto, correoDestino) {
     }
 }
 
+
+//enviarCorreo("<h1>¡Hola!</h1><p>Este es un correo de prueba desde Nodemailer.</p>", "Asunto del Correo","christian.javier.bergero@gmail.com");
+
 export default enviarCorreo;

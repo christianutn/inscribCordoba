@@ -134,7 +134,6 @@ export const getMinisterioByCod = async (req, res, next) => {
 
 
 export const putMinisterio = async (req, res, next) => {
-    const t = await sequelize.transaction(); // Comienza una transacción
     try {
         let { cod, nombre, newCod, esVigente } = req.body;
 
@@ -159,14 +158,11 @@ export const putMinisterio = async (req, res, next) => {
             throw new Error(`No se encontró un ministerio con el código ${cod}`);
         }
 
-        const ministerioAntesJSON = ministerioAntes.toJSON();
-
         // Realiza la actualización en la base de datos
         const [affectedRows] = await Ministerio.update(
             { cod: newCod || cod, nombre: nombre, esVigente: parseEsVigente(esVigente) },
             {
                 where: { cod },
-                transaction: t,
             }
         );
 
@@ -174,21 +170,9 @@ export const putMinisterio = async (req, res, next) => {
             throw new Error("No existen datos para actualizar");
         }
 
-        // Si se actualizó correctamente en la base de datos, actualiza Google Sheets
-        const resultadoGoogleSheets = await actualizarDatosColumna("Ministerio", ministerioAntesJSON.nombre, nombre);
-
-        if (!resultadoGoogleSheets.success) {
-            throw new Error(`Error al actualizar en Google Sheets: ${resultadoGoogleSheets.error}`);
-        }
-
-        // Confirma la transacción
-        await t.commit();
-
         // Respuesta exitosa
         res.status(200).json({ message: "Ministerio actualizado correctamente", ministerio: { cod: newCod || cod, nombre } });
     } catch (error) {
-        // Revertir la transacción en caso de error
-        await t.rollback();
         next(error);
     }
 };

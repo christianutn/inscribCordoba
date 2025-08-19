@@ -8,6 +8,8 @@ import sequelize from "./config/database.js";
 import associateModels from "./models/asociateModelos.js";
 import 'dotenv/config';
 import enviarCorreoDiarioContolDeCursos from "./googleSheets/utils/enviarCorreoDiarioControlDeCursos.js";
+import enviarCorreoCursosFinalizadosAyer from "./googleSheets/utils/enviarCorreoCursosFinalizadosAyer.js";
+
 
 const app = express();
 
@@ -67,6 +69,7 @@ app.use((err, req, res, next) => {
 });
 
 enviarCorreoDiarioContolDeCursos(); // Llamada a la función para enviar el correo diario de control de cursos
+enviarCorreoCursosFinalizadosAyer(); // Llamada a la función para enviar el correo de cursos iniciados ayer
 
 // --- Programación de la Tarea Cron ---
 

@@ -1,44 +1,37 @@
-// src/cron/enviarCorreoDiarioContolDeCursos.js (o el nombre y ruta que uses)
 
 import cron from "node-cron";
 import envioCorreo from "../../utils/enviarCorreo.js"; // Asegúrate que esta ruta es correcta
-// *** CAMBIO 1: Importa la función refactorizada ***
-import  obtenerFilasPorFechaRelativa  from "./buscarCursosARevisarPorFechaDesde.js"; // Asegúrate de que la ruta sea correcta
-import { DateTime } from "luxon"; // Importa DateTime de Luxon para manejar fechas
+import obtenerFilasPorFechaRelativa  from "./buscarCursosARevisarPorFechaDesde.js"; // Reutiliza la misma función
+import { DateTime } from "luxon"; // Importa DateTime de Luxon
 
-const enviarCorreoDiarioContolDeCursos = () => {
-    // Configuración de la tarea cron (ej. todos los días a las 8 AM, zona horaria de Argentina)
-    // '0 8 * * *' -> (Minuto 0, Hora 8, todos los días del mes, todos los meses, todos los días de la semana)
-    console.log("Configurando tarea de CRON para enviar correo diario de control de cursos.");
-    // La expresión '0 * * * *' ejecuta la tarea en el minuto 0 de cada hora.
-    // Para pruebas, es más conveniente una expresión que se ejecute con más frecuencia.
-    // Usaremos '* * * * *' para que se ejecute cada minuto.
-    // Recuerda cambiarlo a la expresión deseada para producción, como '0 8 * * *' para las 8:00 AM.
+const enviarCorreoCursosFinalizadosAyer = () => {
+    // Configuración de la tarea cron (ej. todos los días a las 8:30 AM)
+    // '30 8 * * *' -> (Minuto 30, Hora 8, todos los días del mes, etc.)
+    // Se ejecuta un poco después del otro cron para no superponer logs o carga.
+    console.log("Configurando tarea de CRON para enviar correo de control de cursos iniciados ayer.");
     cron.schedule('0 0 8 * * *', async () => {
         const timestamp = DateTime.now().setZone("America/Argentina/Buenos_Aires").toISO();
-        console.log(`[${timestamp}] CRON TAREA: Iniciando revisión de cursos para alerta de 5 días.`);
+        console.log(`[${timestamp}] CRON TAREA: Iniciando revisión de cursos que comenzaron AYER.`);
 
         try {
-            // *** CAMBIO 2: Usar la función refactorizada para obtener los cursos ***
-            // Le pedimos los cursos cuya "Fecha inicio del curso" sea 5 días en el futuro.
-            const cursosARevisar = await obtenerFilasPorFechaRelativa(
+            // *** LLAMADA A LA FUNCIÓN REUTILIZADA, PERO CON -1 ***
+            const cursosFinalizadosAyer = await obtenerFilasPorFechaRelativa(
                 "principal",               // Nombre de la hoja
                 "A:AF",                    // Rango
-                "Fecha inicio del curso",  // Columna de fecha
-                5                          // Días a buscar (5 días en el futuro)
+                "Fecha fin del curso",  // Columna de fecha
+                -1                         // Días a buscar (-1 para ayer)
             );
 
-            console.log(`[${timestamp}] CRON TAREA: Se obtuvieron ${cursosARevisar.length} cursos que inician en 5 días.`);
+            console.log(`[${timestamp}] CRON TAREA: Se obtuvieron ${cursosFinalizadosAyer.length} cursos que iniciaron ayer.`);
 
-            if (cursosARevisar.length === 0) {
-                console.log(`[${timestamp}] CRON TAREA: No hay cursos para revisar. No se enviará correo.`);
+            if (cursosFinalizadosAyer.length === 0) {
+                console.log(`[${timestamp}] CRON TAREA: No hay cursos que hayan iniciado ayer. No se enviará correo.`);
                 return;
             }
 
-            // *** CAMBIO 3: Construir el HTML de la tabla directamente con los resultados ***
+            // Construir el HTML de la tabla con los resultados
             let tableRowsHtml = '';
-            cursosARevisar.forEach(curso => {
-                // Función de sanitización simple para evitar inyección de HTML
+            cursosFinalizadosAyer.forEach(curso => {
                 const escapeHtml = (unsafe) => {
                     if (typeof unsafe !== 'string') return '';
                     return unsafe
@@ -49,8 +42,6 @@ const enviarCorreoDiarioContolDeCursos = () => {
                          .replace(/'/g, "&#039;");
                 };
 
-                // Asumimos que la fecha ya está en formato AAAA-MM-DD.
-                // Si quieres mostrarla como DD/MM/AAAA, puedes usar Luxon para reformatearla.
                 const fechaFormateada = DateTime.fromISO(curso['Fecha inicio del curso']).toFormat('dd/MM/yyyy');
 
                 tableRowsHtml += `
@@ -58,26 +49,29 @@ const enviarCorreoDiarioContolDeCursos = () => {
                         <td>${escapeHtml(curso['Código del curso'] || 'N/A')}</td>
                         <td>${escapeHtml(curso['Nombre del curso'] || 'N/A')}</td>
                         <td>${escapeHtml(fechaFormateada)}</td>
+                        <td>${escapeHtml(curso['ADM'] || 'Sin asignar')}</td>
+
                     </tr>
                 `;
             });
 
-            // *** CAMBIO 4: Usar Luxon para la fecha objetivo a mostrar en el correo ***
-            const fechaObjetivo = DateTime.local().plus({ days: 5 }).setZone("America/Argentina/Buenos_Aires");
-            const fechaObjetivoStr = fechaObjetivo.toFormat('dd/MM/yyyy'); // Formato DD/MM/AAAA
+            // Usar Luxon para la fecha de ayer a mostrar en el correo
+            const fechaAyer = DateTime.local().minus({ days: 1 }).setZone("America/Argentina/Buenos_Aires");
+            const fechaAyerStr = fechaAyer.toFormat('dd/MM/yyyy');
 
+            // *** HTML DEL CORREO ADAPTADO PARA ESTA ALERTA ***
             const htmlEmailBody = `
                 <!DOCTYPE html>
                 <html lang="es">
                 <head>
                   <meta charset="UTF-8" />
                   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-                  <title>Alerta de Cursos Próximos (5 días)</title>
+                  <title>Alerta de Cursos Finalizados Ayer</title>
                   <style>
                     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f8f8f8; }
                     .container { background-color: #ffffff; padding: 25px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 700px; margin: 20px auto; }
-                    .alert-box { background-color: #eaf4ff; border-left: 6px solid #007BFF; padding: 20px; border-radius: 6px; margin-bottom: 20px; }
-                    .alert-box h3 { margin-top: 0; font-size: 1.2em; color: #0056b3; }
+                    .alert-box { background-color: #fffbe6; border-left: 6px solid #ffc107; padding: 20px; border-radius: 6px; margin-bottom: 20px; } /* Color amarillo para esta alerta */
+                    .alert-box h3 { margin-top: 0; font-size: 1.2em; color: #856404; }
                     .alert-icon { font-size: 1.5em; margin-right: 8px; vertical-align: middle; }
                     .alert-box ul { margin-top: 5px; padding-left: 20px; }
                     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
@@ -90,20 +84,16 @@ const enviarCorreoDiarioContolDeCursos = () => {
                 </head>
                 <body>
                   <div class="container">
-                    <h2>Cursos a controlar</h2>
+                    <h2>Seguimiento de Cursos Finalizados</h2>
                 
                     <div class="alert-box">
-                      <h3><span class="alert-icon">⚠️</span> Atención</h3>
+                      <h3><span class="alert-icon">ℹ️</span> Información</h3>
                       <p>
-                        Los siguientes cursos están programados para comenzar dentro de los próximos <strong>5 días</strong> 
-                        (fecha de inicio: <strong>${fechaObjetivoStr}</strong>). Es necesario revisar cada uno para asegurarse de que:
+                        Los siguientes cursos finalizaron el día de ayer (<strong>${fechaAyerStr}</strong>). Se recomienda verificar el estado y seguimiento de los mismos:
                       </p>
                       <ul>
-                        <li>Estén correctamente maquetados.</li>
-                        <li>Las fechas de los exámenes estén actualizadas.</li>
-                        <li>Las instancias estén creadas y configuradas correctamente.</li>
+                        <li>Corroborar próximas instancias para determinar si es necesario limpiar el curso cuanto antes.</li>
                       </ul>
-                      <p>En caso de detectar inconsistencias o problemas, por favor contactarse con los responsables correspondientes para su corrección.</p>
                 
                       <table>
                         <thead>
@@ -111,6 +101,8 @@ const enviarCorreoDiarioContolDeCursos = () => {
                             <th>Código del curso</th>
                             <th>Nombre del curso</th>
                             <th>Fecha de inicio</th>
+                            <th>Asignado</th>
+
                           </tr>
                         </thead>
                         <tbody>
@@ -127,21 +119,20 @@ const enviarCorreoDiarioContolDeCursos = () => {
                 </html>
             `;
 
-            const emailSubject = `Alerta: ${cursosARevisar.length} Curso${cursosARevisar.length > 1 ? 's' : ''} inicia${cursosARevisar.length > 1 ? 'n' : ''} en 5 días (${fechaObjetivoStr})`;
+            const emailSubject = `Seguimiento: ${cursosFinalizadosAyer.length} Curso${cursosFinalizadosAyer.length > 1 ? 's' : ''} iniciado${cursosFinalizadosAyer.length > 1 ? 's' : ''} el ${fechaAyerStr}`;
             
-            // Toma la lista de correos del .env; si no, usa un valor por defecto
             const emailRecipients = process.env.EMAIL_RECIPIENTS || "soportecampuscordoba@gmail.com";
 
             if (!emailRecipients) {
-                console.error(`[${timestamp}] CRON TAREA: No se configuraron destinatarios de correo. No se puede enviar el correo.`);
+                console.error(`[${timestamp}] CRON TAREA (AYER): No se configuraron destinatarios de correo. No se puede enviar el correo.`);
                 return;
             }
 
             await envioCorreo(htmlEmailBody, emailSubject, emailRecipients);
-            console.log(`[${timestamp}] CRON TAREA: Correo enviado exitosamente a: ${emailRecipients}`);
+            console.log(`[${timestamp}] CRON TAREA (AYER): Correo enviado exitosamente a: ${emailRecipients}`);
 
         } catch (error) {
-            console.error(`[${timestamp}] CRON TAREA: Error general durante la ejecución:`, error);
+            console.error(`[${timestamp}] CRON TAREA (AYER): Error general durante la ejecución:`, error);
         }
 
     }, {
@@ -150,4 +141,4 @@ const enviarCorreoDiarioContolDeCursos = () => {
     });
 }
 
-export default enviarCorreoDiarioContolDeCursos;
+export default enviarCorreoCursosFinalizadosAyer;

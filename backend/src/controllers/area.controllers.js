@@ -91,7 +91,6 @@ export const getAreas = async (req, res, next) => {
 
 
 export const putArea = async (req, res, next) => {
-    const t = await sequelize.transaction();
     try {
         const { cod, nombre, ministerio, newCod, esVigente } = req.body;
 
@@ -106,29 +105,18 @@ export const putArea = async (req, res, next) => {
             throw new Error(`No se encontró un área con el código ${cod}`);
         }
 
-        const areaActualJSON = areaActual.toJSON();
 
         const area = await areaModel.update(
             { cod: newCod || cod, nombre, ministerio: ministerio, esVigente: esVigenteNormalizado },
-            { where: { cod }, transaction: t }
+            { where: { cod } }
         );
 
         if (area == 0) {
             throw new Error("No hubo cambios para actualizar.");
         }
 
-        // Llama a actualizarDatosColumna
-        const resultadoGoogleSheets = await actualizarDatosColumna('Area', areaActualJSON.nombre, nombre);
-
-        if (!resultadoGoogleSheets.success) {
-            throw new Error(`Error al actualizar en Google Sheets: ${resultadoGoogleSheets.error}`);
-        }
-
-        await t.commit();
         res.status(200).json({ success: true, message: "Área actualizada correctamente.", area });
     } catch (error) {
-        await t.rollback();
-        console.error("Error en putArea:", error.message);
         next(error);
     }
 };

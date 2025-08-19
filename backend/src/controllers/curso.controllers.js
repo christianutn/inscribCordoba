@@ -131,13 +131,6 @@ export const postCurso = async (req, res, next) => {
     }
 }
 
-
-// Asegúrate de importar sequelize (tu instancia de Sequelize) y tu modelo cursoModel
-// import sequelize from '../config/database'; // Ajusta la ruta a tu instancia de Sequelize
-// import cursoModel from '../models/curso.models'; // Ajusta la ruta a tu modelo Curso
-// Asegúrate de importar actualizarDatosColumna desde tu servicio de Google Sheets
-// import { actualizarDatosColumna } from '../services/googleSheets.service'; // Ajusta la ruta
-
 export const updateCurso = async (req, res, next) => {
     // Declaramos la variable de transacción para usarla en el catch si es necesario
     let t;
@@ -165,15 +158,9 @@ export const updateCurso = async (req, res, next) => {
         }
         // --- Fin Validaciones de entrada ---
 
-
-        // Inicia la transacción de Sequelize DESPUÉS de las validaciones iniciales
-        t = await sequelize.transaction();
-
-
         // --- Búsqueda del curso (Sin cambios en lógica, AÑADIDA transacción) ---
         const cursoAntes = await cursoModel.findOne({
             where: { cod: cod },
-            transaction: t // <-- Pasa la transacción
         });
 
         if (!cursoAntes) {
@@ -181,11 +168,8 @@ export const updateCurso = async (req, res, next) => {
             throw new Error(`No se encontró un curso con el código ${cod}`);
         }
 
-        const cursoAntesJSON = cursoAntes.toJSON();
-
-
         // --- Actualización en base de datos (Sin cambios en lógica, AÑADIDA transacción) ---
-        const result = await cursoModel.update(
+         await cursoModel.update(
             {
                 cod,
                 nombre,
@@ -202,32 +186,8 @@ export const updateCurso = async (req, res, next) => {
                 where: {
                     cod: cod,
                 },
-                transaction: t // <-- Pasa la transacción
             },
         );
-
-        // Verificamos si la actualización afectó alguna fila (Sin cambios en lógica)
-        if (result[0] === 0) {
-            // Lanzamos el error. El catch lo capturará y hará rollback.
-            // Mantenemos tu lógica original de considerar 0 filas afectadas como error.
-            throw new Error("No hubo actualización de datos");
-        }
-
-
-        // --- Actualización en Google Sheets (Sin cambios en lógica) ---
-        // Esta operación NO es parte de la transacción de DB. Si falla,
-        // el catch hará rollback de la DB, pero el cambio en Sheets no se deshace aquí.
-        const resultadoGoogleSheets = await actualizarDatosColumna('Nombre del curso', cursoAntesJSON.nombre, nombre);
-
-        // Verificamos el resultado de Google Sheets (Sin cambios en lógica)
-        if (!resultadoGoogleSheets || !resultadoGoogleSheets.success) {
-            // Lanzamos el error. El catch lo capturará y hará rollback de la DB.
-            throw new Error(`Error al actualizar en Google Sheets: ${resultadoGoogleSheets ? resultadoGoogleSheets.error : 'Resultado inválido'}`);
-        }
-
-
-        // --- Commit de la transacción y respuesta al cliente ---
-        await t.commit(); // Confirma los cambios en la base de datos
 
         // Si todo fue exitoso, respondemos al cliente
         res.status(200).json({ message: "Se actualizo correctamente el curso" });
@@ -235,23 +195,6 @@ export const updateCurso = async (req, res, next) => {
 
     } catch (error) {
         // --- Manejo de Errores y Rollback ---
-
-        // Si la transacción fue creada (t es una instancia) y no ha sido ya finalizada
-        if (t && !t.finished) {
-            try {
-                await t.rollback(); // Intenta revertir los cambios en la base de datos
-                // No usamos console.log/error para el rollback exitoso según tu requisito estricto,
-                // pero en un sistema real, un log aquí sería útil para monitorear.
-            } catch (rollbackError) {
-                // Captura si el rollback falla (raro). Este SÍ es un error de sistema crítico
-                // que probablemente QUERRÁS loguear para depuración de infraestructura,
-                // aunque rompa la regla estricta de "no console.log". Mantengo el log solo para este caso excepcional.
-                console.error('Sequelize Rollback Error: Error al intentar revertir la transacción:', rollbackError);
-            }
-        }
-
-        // Pasa el error original capturado al siguiente middleware (manejador de errores)
-        // Esto incluye errores de validación, errores de DB, errores de Google Sheets, etc.
         next(error);
     }
 };
